@@ -2,8 +2,8 @@
 @rem --------- Version 0.2.2 ---------
 
 @rem ------------- Files -------------
-set source_files=autostereogram2.c
-set output_file=autostereogram2.exe
+set source_files=autostereogram.c
+set output_file=autostereogram.exe
 
 @rem ----------- Arguments -----------
 set common_args=-Wall -Werror=return-type -Werror=int-conversion -Werror=implicit-function-declaration
