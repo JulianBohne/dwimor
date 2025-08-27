@@ -125,6 +125,9 @@ void StringBuilder_Crop(StringBuilder* sb, size_t length) {
 
 // Note: File paths should use forward slashes
 bool LoadAndPreprocessFileText_(StringBuilder* sb, char* file_name) {
+
+    bool was_successful = false;
+
     StringBuilder_AppendNullTerminated(sb, "\n// #################### BEGIN ");
     StringBuilder_AppendNullTerminated(sb, file_name);
     StringBuilder_AppendNullTerminated(sb, " ####################\n");
@@ -133,12 +136,11 @@ bool LoadAndPreprocessFileText_(StringBuilder* sb, char* file_name) {
 
     if (unprocessed == NULL) {
         TraceLog(LOG_ERROR, "Could not load text file \"%s\"", file_name);
-        return false;
+        return false; // No cleanup required
     }
 
     size_t unprocessed_length = strlen(unprocessed);
 
-    size_t directory_length_with_slash;
     StringBuilder included_file_path = { 0 };
     {
         // Directory without '/' at the end
@@ -147,7 +149,7 @@ bool LoadAndPreprocessFileText_(StringBuilder* sb, char* file_name) {
         StringBuilder_AppendSized(&included_file_path, static_directory, directory_length);
     }
     StringBuilder_AppendSized(&included_file_path, "/", 1);
-    directory_length_with_slash = included_file_path.length;
+    size_t directory_length_with_slash = included_file_path.length;
 
     
     TextIterator it = {
@@ -169,48 +171,55 @@ bool LoadAndPreprocessFileText_(StringBuilder* sb, char* file_name) {
             TextIterator_SkipAfterWhitespace(&it);
             if (it.is_eof) {
                 TraceLog(LOG_ERROR, "Unexpected EOF in \"%s\" after #include", file_name);
-                UnloadFileText(unprocessed);
-                return false;
+                
+                was_successful = false;
+                goto return_defer;
             }
             if (it.text[it.cursor] != '"') {
                 TraceLog(LOG_ERROR, "Expected '\"' after #include in \"%s\", but got %c", file_name, it.text[it.cursor]);
-                UnloadFileText(unprocessed);
-                return false;
+                
+                was_successful = false;
+                goto return_defer;
             }
             TextIterator_ChompN(&it, 1);
             if (it.is_eof) {
                 TraceLog(LOG_ERROR, "Unexpected EOF in \"%s\" after #include \"", file_name);
-                UnloadFileText(unprocessed);
-                return false;
+                
+                was_successful = false;
+                goto return_defer;
             }
             size_t start_include_name = it.cursor;
             if (!TextIterator_SkipUntilTextMatch(&it, "\"")) {
                 TraceLog(LOG_ERROR, "Unexpected EOF in \"%s\" after #include \"...", file_name);
-                UnloadFileText(unprocessed);
-                return false;
+                
+                was_successful = false;
+                goto return_defer;
             }
             StringBuilder_AppendSized(&included_file_path, &it.text[start_include_name], it.cursor - start_include_name);
             
             TextIterator_ChompN(&it, 1);
             
-            if (!LoadAndPreprocessFileText_(sb, included_file_path.string)) {
-                UnloadFileText(unprocessed);
-                return false;
+            if (!LoadAndPreprocessFileText_(sb, included_file_path.string)) {                
+                was_successful = false;
+                goto return_defer;
             }
 
         } else {
             StringBuilder_AppendSized(sb, &it.text[start_cursor], it.cursor - start_cursor);
         }
     }
-
-    UnloadFileText(unprocessed);
-
+    
     StringBuilder_AppendSized(sb, "\n", 1);
     StringBuilder_AppendNullTerminated(sb, "// #################### END ");
     StringBuilder_AppendNullTerminated(sb, file_name);
     StringBuilder_AppendNullTerminated(sb, " ####################\n");
+    
+    was_successful = true;
 
-    return true;
+    return_defer:
+        RL_FREE(included_file_path.string);
+        UnloadFileText(unprocessed);
+        return was_successful;
 }
 
 // Note: File paths should use forward slashes
