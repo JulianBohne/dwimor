@@ -3,11 +3,22 @@
 #include <raymath.h>
 #include <rlgl.h>
 
+#include "shader_preprocessor.h"
+#include "uniform_locations.h"
+
+// The ID of the default shader (when a shader fails to load, the default shader is loaded instead)
+#define DEFAULT_SHADER_ID 3
+
 void FixDefaultTexture();
+
+// Load a render texture with 16 bits per channel
+RenderTexture2D LoadRenderTexture16(int width, int height);
 
 int main(int argc, char** argv) {
     
     float scaleFactor = 0.5;
+
+    // Load color and depth images
     const char* colorImgPath = "res/elephant.png";
     const char* depthImgPath = "res/elephant_depth.png";
     
@@ -23,34 +34,46 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // Initialize Raylib
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-
     InitWindow(colorImg.width * scaleFactor, colorImg.height * scaleFactor, "Autostereogram");
-
     FixDefaultTexture();
-
     
     // Load shaders
     Shader mangoShader = LoadShader(NULL, "shader/mango.glsl");
+    Shader noiseShader = LoadShader(NULL, "shader/noise.glsl");
+    Shader transferShader = LoadAndPreProcessFragmentShader("shader/transfer.glsl");
+
+    Shader projectShader = LoadAndPreProcessFragmentShader("shader/project.glsl");
+    if (projectShader.id == DEFAULT_SHADER_ID) return 1; // If it is the default shader, it didn't load correctly
     
     // Load / Create Textures
     Texture2D colorTexture = LoadTextureFromImage(colorImg);
+    SetTextureWrap(colorTexture, TEXTURE_WRAP_CLAMP);
 
+    Texture2D depthTexture = LoadTextureFromImage(depthImg);
+    SetTextureWrap(depthTexture, TEXTURE_WRAP_CLAMP);
+    
+    // Some input related variables
     int width, height;
-
+    Vector2 mouse;
+    
+    // Draw loop
     while(!WindowShouldClose()) {
         BeginDrawing();
+            // Update input variables
             width  = GetRenderWidth();
             height = GetRenderHeight();
-            BeginShaderMode(mangoShader);
-                DrawRectangle(0, 0, width, height, WHITE);
+            mouse = GetMousePosition();
+            
+            BeginShaderMode(projectShader);
+                SetShaderValueTexture(projectShader, LOCATION_DEPTH_TEXTURE, depthTexture);
+                DrawTextureEx(colorTexture, (Vector2){0, 0}, 0, scaleFactor, WHITE);
             EndShaderMode();
-            DrawTextureEx(colorTexture, (Vector2){0, 0}, 0, scaleFactor, WHITE);
         EndDrawing();
     }
 
     CloseWindow();
-
     return 0;
 }
 
@@ -66,11 +89,14 @@ void FixDefaultTexture() {
     SetShapesTexture(defaultTexture, (Rectangle){ 0.0f, 0.0f, 1.0f, 1.0f });
 }
 
+
+// ------------------- Utilities -------------------
+
 // Load a render texture with 16 bits per channel
 RenderTexture2D LoadRenderTexture16(int width, int height) {
     RenderTexture2D target = { 0 };
 
-    target.id = rlLoadFramebuffer(width, height); // Load an empty framebuffer
+    target.id = rlLoadFramebuffer(); // Load an empty framebuffer
 
     if (target.id > 0)
     {

@@ -2,17 +2,17 @@
 @rem --------- Version 0.2.2 ---------
 
 @rem ------------- Files -------------
-set source_files=autostereogram.c
+set source_files=autostereogram.c, shader_preprocessor.c
 set output_file=autostereogram.exe
 
 @rem ----------- Arguments -----------
 set common_args=-Wall -Werror=return-type -Werror=int-conversion -Werror=implicit-function-declaration
-set debug_args=-D _DEBUG
+set debug_args=-D _DEBUG -Wno-unused-variable -Wno-unused-but-set-variable
 set release_args=-D NDEBUG -O3
 set test_args=-D _DEBUG -D TESTING
 
 @rem ----------- Libraries -----------
-call libgan require raylib 5.0 || exit /b 1
+call libgan require raylib 5.5 || exit /b 1
 
 @rem I don't know why, but you have to add this.
 @rem Otherwise this doesn't always return 0 when used in cmd.

@@ -1,3 +1,14 @@
 .vscode
 bin
-res/*.png
+
+# Don't commit the test images
+res/elephant_depth.png
+res/elephant.png
+
+# Ignore Temporary files
+tmp
+
+# Latex junk files
+math/*.aux
+math/*.log
+

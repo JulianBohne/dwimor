@@ -1,10 +1,12 @@
-#version 330
+#include "common.glslh"
 
 // UV Coordinates from vertex shader
 in vec2 fragTexCoord;
 
-// UV Map to be used for transfer
-uniform sampler2D texture0;
+// TODO: Rework these comments
+// // UV Map to be used for transfer
+// // Note: Should be 16 bit per channel, otherwise there arent enough values for more than 256x256 pixel textures
+// // uniform sampler2D texture0;
 
 // Patter texture that should be mapped by UV texture
 uniform sampler2D patternTex;
